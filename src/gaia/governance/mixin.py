@@ -44,12 +44,13 @@ without review") and avoids silent pass-through.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any
 
 from .action_mapper import map_gaia_tool_call_to_action_request
 from .adapter import GaiaGovernanceAdapter
-from .config import GovernanceConfig
+from .config import GovernanceCallback, GovernanceConfig, GovernanceReviewer
 from .decorators import read_risk_tags
+from .exceptions import GaiaGovernanceError
 from .schemas import (
     ActionRequest,
     CheckpointResolution,
@@ -57,16 +58,6 @@ from .schemas import (
     WorkflowTransition,
     new_id,
 )
-
-# Observational callback: (tool_name, tool_args, action, decision) -> None.
-GovernanceCallback = Callable[
-    [str, dict[str, Any], ActionRequest, GovernanceDecision], None
-]
-
-# Reviewer callback: (tool_name, tool_args, decision) -> bool.
-# Called when REVIEW is returned and no GAIA console is available.
-# Return True to approve, False to reject.
-GovernanceReviewer = Callable[[str, dict[str, Any], GovernanceDecision], bool]
 
 
 class GovernedAgentMixin:
@@ -144,6 +135,7 @@ class GovernedAgentMixin:
 
         if outcome.status == "CHECKPOINT_OPEN":
             return self._handle_review_checkpoint(
+                adapter,
                 tool_name,
                 tool_args,
                 decision,
@@ -248,20 +240,22 @@ class GovernedAgentMixin:
 
     def _handle_review_checkpoint(
         self,
+        adapter: GaiaGovernanceAdapter,
         tool_name: str,
         tool_args: dict[str, Any],
         decision: GovernanceDecision,
         transition: WorkflowTransition,
         checkpoint_id: str | None,
     ) -> Any:
-        assert checkpoint_id is not None, "CHECKPOINT_OPEN without checkpoint_id"
+        if checkpoint_id is None:
+            raise GaiaGovernanceError("CHECKPOINT_OPEN without checkpoint_id")
         approved = self._prompt_review(tool_name, tool_args, decision)
         resolution = CheckpointResolution(
             resolution="APPROVE" if approved else "REJECT",
             actor_id=self._governance_actor_id,
             reason="reviewer approved" if approved else "reviewer rejected",
         )
-        resolved = self.governance_adapter.resolve_checkpoint(  # type: ignore[union-attr]
+        resolved = adapter.resolve_checkpoint(
             checkpoint_id, resolution, transition.workflow_id
         )
         if resolved.status == "RESUMED":

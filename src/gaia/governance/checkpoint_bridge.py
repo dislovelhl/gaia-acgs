@@ -52,7 +52,8 @@ class InMemoryCheckpointBridge:
                 "rule_ids": list(decision.rule_ids),
             },
         )
-        self._records[record.checkpoint_id] = record
+        with self._lock:
+            self._records[record.checkpoint_id] = record
         return record
 
     def resolve_checkpoint(
@@ -79,7 +80,12 @@ class InMemoryCheckpointBridge:
                     "checkpoint timed out",
                 ),
             }
-            status, outcome_status, reason = mapping[resolution.resolution]
+            entry = mapping.get(resolution.resolution)
+            if entry is None:
+                raise InvalidResolutionError(
+                    f"unknown resolution type: {resolution.resolution!r}"
+                )
+            status, outcome_status, reason = entry
             self._records[checkpoint_id] = CheckpointRecord(
                 checkpoint_id=current.checkpoint_id,
                 workflow_id=current.workflow_id,

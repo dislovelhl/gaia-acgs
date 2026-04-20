@@ -8,7 +8,7 @@ import hashlib
 import json
 from dataclasses import asdict
 
-from .exceptions import InvalidResolutionError
+from .exceptions import GaiaGovernanceError, InvalidResolutionError
 from .protocols import (
     CheckpointRuntime,
     PolicyBindingProtocol,
@@ -113,13 +113,16 @@ class GaiaGovernanceAdapter:
                 metadata={"receipt_id": receipt.receipt_id},
             )
 
-        checkpoint = self.checkpoint_runtime.create_checkpoint(transition, decision)
-        return TransitionOutcome(
-            status="CHECKPOINT_OPEN",
-            reason="review required",
-            checkpoint_id=checkpoint.checkpoint_id,
-            metadata={"checkpoint_id": checkpoint.checkpoint_id},
-        )
+        if decision.decision == "REVIEW":
+            checkpoint = self.checkpoint_runtime.create_checkpoint(transition, decision)
+            return TransitionOutcome(
+                status="CHECKPOINT_OPEN",
+                reason="review required",
+                checkpoint_id=checkpoint.checkpoint_id,
+                metadata={"checkpoint_id": checkpoint.checkpoint_id},
+            )
+
+        raise GaiaGovernanceError(f"unknown decision type: {decision.decision!r}")
 
     def resolve_checkpoint(
         self,

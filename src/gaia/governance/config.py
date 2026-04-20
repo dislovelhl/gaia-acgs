@@ -28,9 +28,15 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from .adapter import GaiaGovernanceAdapter
+from .schemas import ActionRequest, GovernanceDecision
 
-GovernanceCallback = Callable[[str, dict, Any, Any], None]
-GovernanceReviewer = Callable[[str, dict, Any], bool]
+# Observational callback: (tool_name, tool_args, action, decision) -> None.
+GovernanceCallback = Callable[
+    [str, dict[str, Any], ActionRequest, GovernanceDecision], None
+]
+
+# Reviewer callback: (tool_name, tool_args, decision) -> bool.
+GovernanceReviewer = Callable[[str, dict[str, Any], GovernanceDecision], bool]
 
 
 @dataclass(slots=True)

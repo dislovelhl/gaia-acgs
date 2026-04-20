@@ -17,7 +17,7 @@ Both implement :class:`gaia.governance.protocols.ReceiptServiceProtocol`.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from pathlib import Path
 from threading import Lock
 from typing import Iterator
@@ -31,19 +31,23 @@ class InMemoryReceiptService:
 
     def __init__(self) -> None:
         self._records: dict[str, ReceiptRecord] = {}
+        self._lock = Lock()
 
     def issue_receipt(self, record: ReceiptRecord) -> str:
-        self._records[record.receipt_id] = record
+        with self._lock:
+            self._records[record.receipt_id] = record
         return record.receipt_id
 
     def get_receipt(self, receipt_id: str) -> ReceiptRecord:
-        try:
-            return self._records[receipt_id]
-        except KeyError as exc:
-            raise GaiaGovernanceError(f"receipt not found: {receipt_id}") from exc
+        with self._lock:
+            try:
+                return self._records[receipt_id]
+            except KeyError as exc:
+                raise GaiaGovernanceError(f"receipt not found: {receipt_id}") from exc
 
     def __iter__(self) -> Iterator[ReceiptRecord]:
-        return iter(self._records.values())
+        with self._lock:
+            return iter(list(self._records.values()))
 
 
 class JsonlReceiptService:
@@ -87,13 +91,17 @@ class JsonlReceiptService:
     def _read_all(self) -> Iterator[ReceiptRecord]:
         if not self.path.exists():
             return
+        known = {f.name for f in fields(ReceiptRecord)}
         with self.path.open("r", encoding="utf-8") as fh:
             for line in fh:
-                line = line.strip()
-                if not line:
+                stripped = line.strip()
+                if not stripped:
                     continue
-                data = json.loads(line)
-                yield ReceiptRecord(**data)
+                try:
+                    data = json.loads(stripped)
+                    yield ReceiptRecord(**{k: v for k, v in data.items() if k in known})
+                except Exception:  # pylint: disable=broad-exception-caught
+                    pass  # Skip malformed or schema-mismatched lines.
 
     def __iter__(self) -> Iterator[ReceiptRecord]:
         return self._read_all()
