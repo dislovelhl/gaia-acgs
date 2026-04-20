@@ -1,6 +1,7 @@
 # Copyright(C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 # SPDX-License-Identifier: MIT
 """Maps a GAIA tool call into a governance ActionRequest."""
+
 from __future__ import annotations
 
 from typing import Any

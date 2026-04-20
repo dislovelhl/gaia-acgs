@@ -6,6 +6,7 @@ Included in PR 1 as a future-hook seam for constitutional-swarm. The
 base agent loop does not currently emit workflow events; callers can
 use this mapper once such events exist.
 """
+
 from __future__ import annotations
 
 from typing import Any

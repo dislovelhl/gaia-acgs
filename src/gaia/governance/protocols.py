@@ -6,6 +6,7 @@ Keeping these as Protocols (not ABCs) lets downstream implementations
 live in ACGS-lite, constitutional-swarm, or GAIA itself without forcing
 an inheritance relationship.
 """
+
 from __future__ import annotations
 
 from typing import Protocol, runtime_checkable

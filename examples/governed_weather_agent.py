@@ -32,6 +32,7 @@ the MCP tools.
 The base ``Agent`` class is **not modified**. Governance is composed
 onto the agent via :class:`GovernedAgentMixin`.
 """
+
 from gaia import Agent, tool
 from gaia.governance import (
     GaiaGovernanceAdapter,

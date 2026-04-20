@@ -11,8 +11,9 @@ GAIA agents. To govern an agent, mix :class:`GovernedAgentMixin` into
 your agent class and pass a :class:`GaiaGovernanceAdapter` via the
 ``governance_adapter`` keyword argument.
 """
-from .adapter import GaiaGovernanceAdapter
+
 from .action_mapper import map_gaia_tool_call_to_action_request
+from .adapter import GaiaGovernanceAdapter
 from .config import GovernanceConfig
 from .decorators import govern, read_risk_tags
 from .exceptions import (

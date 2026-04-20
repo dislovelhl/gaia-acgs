@@ -1,6 +1,7 @@
 # Copyright(C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 # SPDX-License-Identifier: MIT
 """Governance adapter: entry point for action-level and workflow-level flows."""
+
 from __future__ import annotations
 
 import hashlib

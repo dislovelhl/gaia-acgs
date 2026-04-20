@@ -6,6 +6,7 @@ Ported from the gaia-acgs starter scaffold; these types are intentionally
 framework-agnostic dataclasses so they can be exchanged with ACGS-lite
 and constitutional-swarm without importing GAIA runtime symbols.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

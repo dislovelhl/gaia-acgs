@@ -24,6 +24,7 @@ time and merges those tags with any dict passed via
 in both, so callers can override decorator defaults without editing
 source.
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable

@@ -13,6 +13,7 @@ Two variants are shipped:
 
 Both implement :class:`gaia.governance.protocols.ReceiptServiceProtocol`.
 """
+
 from __future__ import annotations
 
 import json

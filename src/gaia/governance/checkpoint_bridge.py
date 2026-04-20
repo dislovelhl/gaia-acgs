@@ -6,6 +6,7 @@ Production deployments will swap this for a persistent bridge backed by
 constitutional-swarm. Kept tiny so unit tests and the governed example
 can run with no external dependencies.
 """
+
 from __future__ import annotations
 
 from threading import Lock
@@ -66,9 +67,7 @@ class InMemoryCheckpointBridge:
 
             current = self._records[checkpoint_id]
             if current.status != "OPEN":
-                raise InvalidResolutionError(
-                    f"checkpoint is not open: {checkpoint_id}"
-                )
+                raise InvalidResolutionError(f"checkpoint is not open: {checkpoint_id}")
 
             mapping = {
                 "APPROVE": ("APPROVED", "RESUMED", "checkpoint approved"),

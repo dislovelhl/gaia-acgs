@@ -6,6 +6,7 @@ Swap for constitutional-swarm's PolicyBinding once the policy control
 plane is in place. The receipt issuer depends on this to stamp
 policy-version + constitution-hash onto every decision.
 """
+
 from __future__ import annotations
 
 from dataclasses import replace

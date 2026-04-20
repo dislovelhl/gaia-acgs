@@ -21,6 +21,7 @@ or, equivalently::
         governance_risk_tags={"delete_record": ["blocked"]},
     )
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

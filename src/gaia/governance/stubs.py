@@ -5,6 +5,7 @@
 Real engines will come from ACGS-lite. This stub decides purely from
 ``risk_tags`` on the :class:`ActionRequest`.
 """
+
 from __future__ import annotations
 
 from .schemas import ActionRequest, GovernanceDecision

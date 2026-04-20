@@ -41,6 +41,7 @@ reviewer is available, the mixin **fails closed** and rejects the
 tool. This matches the intent of the decision type ("do not execute
 without review") and avoids silent pass-through.
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable
