@@ -88,6 +88,20 @@ jobs:
           echo "Diff generated: $(wc -l < pr-diff.txt) lines"
           echo "Files changed: $(wc -l < pr-files.txt) files"
 
+
+      - name: Check Anthropic credentials
+        id: creds-check
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ] || [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "ANTHROPIC_CREDS_OK=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is set — skipping Claude step."
+            echo "ANTHROPIC_CREDS_OK=false" >> "$GITHUB_ENV"
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
       - name: Run Claude Code Review
         # Pinned to v1.0.99 by SHA: supports `pull_request_target` (added in PR #579,
         # merged 2025-09-22) and Opus 4.7 (fixed in v1.0.98). The `@beta` floating tag
@@ -98,6 +112,7 @@ jobs:
         # v1.0 API migration: `direct_prompt` + `custom_instructions` → single `prompt`.
         # `model` + `max_turns` → `claude_args`. See upstream migration guide:
         # https://github.com/anthropics/claude-code-action/blob/main/docs/migration-guide.md
+        if: env.ANTHROPIC_CREDS_OK == 'true'
         uses: anthropics/claude-code-action@c3d45e8e941e1b2ad7b278c57482d9c5bf1f35b3  # v1.0.99
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -339,12 +354,27 @@ jobs:
           echo "Diff generated: $(wc -l < pr-diff.txt) lines"
           echo "Files changed: $(wc -l < pr-files.txt) files"
 
+
+      - name: Check Anthropic credentials
+        id: creds-check
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ] || [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "ANTHROPIC_CREDS_OK=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is set — skipping Claude step."
+            echo "ANTHROPIC_CREDS_OK=false" >> "$GITHUB_ENV"
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
       - name: Respond to PR comment
         # Automation mode (passes `prompt`) avoids the tag-mode `--model` bug
         # (https://github.com/anthropics/claude-code-action/issues/1223). Tag mode
         # would silently fall back to Sonnet 4.6 regardless of --model. We also drop
         # `continue-on-error`: the event is gated to same-repo PRs, so permission
         # errors shouldn't occur — and if they do we want to see them, not hide them.
+        if: env.ANTHROPIC_CREDS_OK == 'true'
         uses: anthropics/claude-code-action@c3d45e8e941e1b2ad7b278c57482d9c5bf1f35b3  # v1.0.99
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -504,6 +534,20 @@ jobs:
           echo "Diff generated: $(wc -l < pr-diff.txt) lines"
           echo "Files changed: $(wc -l < pr-files.txt) files"
 
+
+      - name: Check Anthropic credentials
+        id: creds-check
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ] || [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "ANTHROPIC_CREDS_OK=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is set — skipping Claude step."
+            echo "ANTHROPIC_CREDS_OK=false" >> "$GITHUB_ENV"
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
       - name: Respond to issue or PR comment
         # Automation mode (passes `prompt`) avoids the tag-mode `--model` bug
         # (https://github.com/anthropics/claude-code-action/issues/1223). It also
@@ -511,6 +555,7 @@ jobs:
         # updates it" behavior — in automation mode Claude runs to completion and
         # posts one final comment. `--max-turns 50` (up from 30) gives enough
         # budget for large repos. `continue-on-error` removed: we want failures visible.
+        if: env.ANTHROPIC_CREDS_OK == 'true'
         uses: anthropics/claude-code-action@c3d45e8e941e1b2ad7b278c57482d9c5bf1f35b3  # v1.0.99
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -772,8 +817,22 @@ jobs:
           echo "Diff files created in release-diffs/"
           ls -la release-diffs/ 2>/dev/null || echo "No diff files"
 
+
+      - name: Check Anthropic credentials
+        id: creds-check
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ] || [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "ANTHROPIC_CREDS_OK=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is set — skipping Claude step."
+            echo "ANTHROPIC_CREDS_OK=false" >> "$GITHUB_ENV"
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
       - name: Generate release notes with Claude
-        if: steps.tag.outputs.SKIP != 'true'
+        if: steps.tag.outputs.SKIP != 'true' && env.ANTHROPIC_CREDS_OK == 'true'
         id: generate-notes
         uses: anthropics/claude-code-action@c3d45e8e941e1b2ad7b278c57482d9c5bf1f35b3  # v1.0.99
         with:
