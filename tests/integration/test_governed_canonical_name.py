@@ -9,6 +9,7 @@ model can bypass a blocked MCP tool by calling the unprefixed alias
 mixin must resolve through the base Agent's ``_resolve_tool_name``
 before building the ActionRequest.
 """
+
 from __future__ import annotations
 
 from typing import Any

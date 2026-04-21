@@ -11,6 +11,7 @@ or MCP. The goal is to prove that:
 3. An ALLOW decision passes through to the underlying tool.
 4. The governance callback receives the decision.
 """
+
 from __future__ import annotations
 
 from typing import Any

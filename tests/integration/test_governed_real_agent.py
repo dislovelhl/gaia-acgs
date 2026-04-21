@@ -17,6 +17,7 @@ binds correctly against the real class by:
 If this test ever breaks, the mixin's contract with the real Agent has
 regressed — long before anyone runs the full interactive demo.
 """
+
 from __future__ import annotations
 
 from gaia import Agent, tool

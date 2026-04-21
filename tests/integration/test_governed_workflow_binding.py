@@ -7,6 +7,7 @@ workflow_id ``B`` and have a receipt issued under workflow B. The
 adapter validates the checkpoint's stored workflow against the
 caller-supplied workflow_id before resolving.
 """
+
 from __future__ import annotations
 
 import threading

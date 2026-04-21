@@ -7,6 +7,7 @@ Proves that when a policy returns REVIEW, the mixin opens a checkpoint,
 asks a reviewer, records a receipt for the resolution, and either runs
 or denies the tool based on the reviewer's response.
 """
+
 from __future__ import annotations
 
 from typing import Any
