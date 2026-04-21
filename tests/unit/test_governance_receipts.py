@@ -1,6 +1,7 @@
 # Copyright(C) 2025-2026 Advanced Micro Devices, Inc. All rights reserved.
 # SPDX-License-Identifier: MIT
 """Unit tests for receipt issuance and policy-version binding."""
+
 from __future__ import annotations
 
 import pytest

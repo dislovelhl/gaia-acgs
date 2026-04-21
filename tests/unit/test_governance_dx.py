@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 # pylint: disable=protected-access
 """Tests for the DX ergonomic surfaces: `.default()`, GovernanceConfig, @govern."""
+
 from __future__ import annotations
 
 from typing import Any
