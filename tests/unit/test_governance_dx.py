@@ -6,7 +6,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from gaia import tool
+from gaia.agents.base.tools import _TOOL_REGISTRY
 from gaia.governance import (
     GaiaGovernanceAdapter,
     GovernanceConfig,
@@ -39,6 +42,15 @@ class _FakeAgent:
 
 class _GovernedFakeAgent(GovernedAgentMixin, _FakeAgent):
     pass
+
+
+@pytest.fixture(autouse=True)
+def _ensure_dx_tools_registered():
+    """Re-register test tools if _TOOL_REGISTRY was cleared by another test suite."""
+    for fn in (_dx_decorated_blocked, _dx_decorated_review):
+        if fn.__name__ not in _TOOL_REGISTRY:
+            tool(fn)
+    yield
 
 
 # ---- GaiaGovernanceAdapter.default() ------------------------------------
