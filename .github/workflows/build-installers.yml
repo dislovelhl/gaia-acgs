@@ -92,6 +92,7 @@ on:
       - 'src/gaia/apps/webui/main.cjs'
       - 'src/gaia/apps/webui/bin/**'
       - 'src/gaia/apps/webui/services/**'
+      - 'tests/electron/fixtures/**'
       - 'src/gaia/version.py'
 
 # Least-privilege default. Only the release-upload step needs `contents:
@@ -556,6 +557,7 @@ jobs:
             --device /dev/fuse
             --security-opt seccomp=unconfined
             --security-opt apparmor=unconfined
+            --ipc=host
             -v "${APPIMAGE_HOST}:/work/gaia.AppImage:ro"
           )
 
@@ -574,8 +576,9 @@ jobs:
               xvfb-run --auto-servernum /tmp/gaia.AppImage \
                 >/tmp/stdout.log 2>/tmp/stderr.log &
               APP_PID=$!
-              # Poll for readiness up to 90s.
-              for i in $(seq 1 90); do
+              # Poll for readiness up to 300s — fresh install downloads
+              # Lemonade + a model on first run; 90s was too tight.
+              for i in $(seq 1 300); do
                 if grep -q "state: ready" /tmp/stdout.log 2>/dev/null; then
                   break
                 fi
@@ -587,18 +590,21 @@ jobs:
                 kill -9 "$APP_PID" 2>/dev/null || true
                 exit 1
               }
-              # Extract the chosen port from stdout. main.cjs logs it via
-              # "Starting backend: ... --ui-port <n>". Fall back to 4200
-              # only if the pattern is not found (older builds).
-              PORT=$(grep -oE "ui-port[ =]+([0-9]+)" /tmp/stdout.log | head -n1 | grep -oE "[0-9]+")
-              PORT=${PORT:-4200}
               # Prove the API actually serves: /api/health must echo the
-              # service string. Retry a few times in case the backend is
-              # mid-init at the "state: ready" log point.
+              # service string. Re-read the port on every attempt because
+              # main.cjs logs "Starting backend: ... --ui-port <n>" shortly
+              # AFTER state: ready — the log line may not exist yet on the
+              # first iteration. Fall back to 4200 for older builds.
               HEALTH_OK=0
-              for i in $(seq 1 10); do
-                if curl -sSf "http://127.0.0.1:${PORT}/api/health" \
-                    | grep -q "gaia-agent-ui"; then
+              for i in $(seq 1 30); do
+                PORT=$(grep -oE "ui-port[ =]+([0-9]+)" /tmp/stdout.log | head -n1 | grep -oE "[0-9]+")
+                PORT=${PORT:-4200}
+                # Use bash /dev/tcp instead of curl — curl is purged in this
+                # container to prove the bundled-uv path eliminates that dep.
+                # Avoid single quotes inside the outer single-quoted bash -c block
+                # by using a subshell ( ) with double-quoted printf instead.
+                RESPONSE=$( (exec 3<>/dev/tcp/127.0.0.1/${PORT} && printf "GET /api/health HTTP/1.0\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n" >&3 && timeout 5 cat <&3) 2>/dev/null || true)
+                if echo "$RESPONSE" | grep -q "gaia-agent-ui"; then
                   HEALTH_OK=1
                   break
                 fi
@@ -678,7 +684,7 @@ jobs:
               xvfb-run --auto-servernum /tmp/gaia.AppImage \
                 >/tmp/stdout.log 2>/tmp/stderr.log &
               APP_PID=$!
-              for i in $(seq 1 90); do
+              for i in $(seq 1 300); do
                 if grep -q "state: ready" /tmp/stdout.log 2>/dev/null; then
                   break
                 fi
@@ -690,10 +696,10 @@ jobs:
                 kill -9 "$APP_PID" 2>/dev/null || true
                 exit 1
               }
-              PORT=$(grep -oE "ui-port[ =]+([0-9]+)" /tmp/stdout.log | head -n1 | grep -oE "[0-9]+")
-              PORT=${PORT:-4200}
               HEALTH_OK=0
-              for i in $(seq 1 10); do
+              for i in $(seq 1 30); do
+                PORT=$(grep -oE "ui-port[ =]+([0-9]+)" /tmp/stdout.log | head -n1 | grep -oE "[0-9]+")
+                PORT=${PORT:-4200}
                 if curl -sSf "http://127.0.0.1:${PORT}/api/health" \
                     | grep -q "gaia-agent-ui"; then
                   HEALTH_OK=1
@@ -761,10 +767,10 @@ jobs:
             kill -9 "$APP_PID" 2>/dev/null || true
             exit 1
           fi
-          PORT=$(grep -oE "ui-port[ =]+([0-9]+)" /tmp/stdout.log | head -n1 | grep -oE "[0-9]+")
-          PORT=${PORT:-4200}
           HEALTH_OK=0
-          for i in $(seq 1 10); do
+          for i in $(seq 1 30); do
+            PORT=$(grep -oE "ui-port[ =]+([0-9]+)" /tmp/stdout.log | head -n1 | grep -oE "[0-9]+")
+            PORT=${PORT:-4200}
             if curl -sSf "http://127.0.0.1:${PORT}/api/health" \
                 | grep -q "gaia-agent-ui"; then
               HEALTH_OK=1
