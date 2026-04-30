@@ -24,6 +24,7 @@ import {
     Copy,
     Check,
     File,
+    ShieldAlert,
     type LucideIcon,
 } from 'lucide-react';
 import type { AgentStep, CommandOutput, RetrievalChunk } from '../types';
@@ -174,7 +175,9 @@ export function AgentActivity({ steps, isActive, variant = 'inline' }: AgentActi
     }, [displaySteps, toolNameFilter, statusFilter]);
 
     const errorSteps = displaySteps.filter((s) => s.type === 'error');
+    const policyAlertSteps = displaySteps.filter((s) => s.type === 'policy_alert');
     const hasErrors = errorSteps.length > 0;
+    const hasPolicyAlerts = policyAlertSteps.length > 0;
 
     // Auto-expand native tools for visibility. MCP tools start collapsed
     // by default (users expand on demand) to reduce noise in busy sessions.
@@ -190,7 +193,12 @@ export function AgentActivity({ steps, isActive, variant = 'inline' }: AgentActi
                 return next;
             });
         }
-    }, [displaySteps]);
+        // Policy BLOCKs need to be visible in conversation history, not hidden
+        // behind the collapsed activity disclosure.
+        if (hasPolicyAlerts) {
+            setExpanded(true);
+        }
+    }, [displaySteps, hasPolicyAlerts]);
 
     const toggleTool = useCallback((id: number) => {
         // Clear any pending collapse timer when user manually toggles
@@ -214,10 +222,11 @@ export function AgentActivity({ steps, isActive, variant = 'inline' }: AgentActi
     // visually change when transitioning from thinking to answer streaming.
     const stepCount = displaySteps.length;
     const summaryText = `${stepCount} step${stepCount !== 1 ? 's' : ''}`
-        + (toolSteps.length > 0 ? ` \u00b7 ${toolSteps.length} tool${toolSteps.length !== 1 ? 's' : ''}` : '');
+        + (toolSteps.length > 0 ? ` · ${toolSteps.length} tool${toolSteps.length !== 1 ? 's' : ''}` : '')
+        + (policyAlertSteps.length > 0 ? ` · ${policyAlertSteps.length} policy block${policyAlertSteps.length !== 1 ? 's' : ''}` : '');
 
     return (
-        <div className={`agent-activity ${variant} ${isActive ? 'active' : 'done'} ${hasErrors ? 'has-errors' : ''}`}>
+        <div className={`agent-activity ${variant} ${isActive ? 'active' : 'done'} ${hasErrors || hasPolicyAlerts ? 'has-errors' : ''}`}>
             {/* Summary bar */}
             <button
                 className="agent-summary-bar"
@@ -226,7 +235,7 @@ export function AgentActivity({ steps, isActive, variant = 'inline' }: AgentActi
                 aria-label={expanded ? 'Collapse agent activity' : 'Expand agent activity'}
             >
                 <div className="agent-summary-left">
-                    {hasErrors ? (
+                    {hasErrors || hasPolicyAlerts ? (
                         <AlertCircle size={14} className="agent-icon-error" />
                     ) : (
                         <Zap size={14} className="agent-icon-done" />
@@ -290,6 +299,9 @@ export function AgentActivity({ steps, isActive, variant = 'inline' }: AgentActi
                             if (step.type === 'error') {
                                 return <FlowError key={step.id} step={step} />;
                             }
+                            if (step.type === 'policy_alert') {
+                                return <FlowPolicyAlert key={step.id} step={step} />;
+                            }
                             return null;
                         })}
                     </div>
@@ -330,6 +342,35 @@ function FlowStatus({ step }: { step: AgentStep }) {
     return (
         <div className={`flow-thought ${step.active ? 'active' : ''}`}>
             <span className="flow-thought-text">{text}</span>
+        </div>
+    );
+}
+
+function FlowPolicyAlert({ step }: { step: AgentStep }) {
+    return (
+        <div className="flow-policy-alert" id={step.receiptId ? `policy-receipt-${encodeURIComponent(step.receiptId)}` : undefined}>
+            <div className="flow-policy-alert-header">
+                <ShieldAlert size={15} />
+                <span>Policy Shield</span>
+                <strong>{step.decision || 'BLOCK'}</strong>
+            </div>
+            <div className="flow-policy-alert-body">
+                <div className="flow-policy-alert-title">{step.label}</div>
+                {step.detail && <div className="flow-policy-alert-reason">{step.detail}</div>}
+                <dl>
+                    {step.tool && (<><dt>Tool</dt><dd><code>{step.tool}</code></dd></>)}
+                    {step.ruleIds && step.ruleIds.length > 0 && (<><dt>Rules</dt><dd><code>{step.ruleIds.join(', ')}</code></dd></>)}
+                    {step.policyVersion && (<><dt>Policy</dt><dd><code>{step.policyVersion}</code></dd></>)}
+                    <dt>Receipt</dt>
+                    <dd>
+                        {step.receiptId ? (
+                            <a href={`#policy-receipt-${encodeURIComponent(step.receiptId)}`}>View receipt <code>{step.receiptId}</code></a>
+                        ) : (
+                            <span className="flow-policy-alert-missing">Receipt unavailable</span>
+                        )}
+                    </dd>
+                </dl>
+            </div>
         </div>
     );
 }

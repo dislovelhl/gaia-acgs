@@ -130,6 +130,73 @@
     color: var(--text-secondary);
 }
 
+/* ── Flow: Governance policy shield card ───────────────────────── */
+.flow-policy-alert {
+    border-radius: var(--radius-xs);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(127, 29, 29, 0.12));
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    animation: toolSlideIn 250ms var(--ease) both;
+}
+
+.flow-policy-alert-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(245, 158, 11, 0.22);
+    color: #f59e0b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.flow-policy-alert-header strong {
+    margin-left: auto;
+    color: #ef4444;
+}
+
+.flow-policy-alert-body {
+    padding: 9px 10px 10px;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.flow-policy-alert-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.flow-policy-alert-reason {
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.flow-policy-alert dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 10px;
+    margin: 0;
+}
+
+.flow-policy-alert dt {
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.flow-policy-alert dd {
+    margin: 0;
+    word-break: break-word;
+}
+
+.flow-policy-alert a,
+.flow-policy-alert-missing {
+    color: #f59e0b;
+}
+
 .flow-thought-text {
     font-style: italic;
     word-break: break-word;

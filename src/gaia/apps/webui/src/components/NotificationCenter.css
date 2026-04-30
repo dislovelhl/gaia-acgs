@@ -187,6 +187,9 @@
 .notification-item.notif-type-permission {
   border-left-color: var(--amd-red);
 }
+.notification-item.notif-type-policy {
+  border-left-color: #f59e0b;
+}
 .notification-item.notif-type-security {
   border-left-color: var(--accent-yellow);
 }
@@ -203,6 +206,9 @@
 /* ── Type-based icon colors ──────────────────────────────────────────── */
 .notif-type-permission .notification-icon {
   color: var(--amd-red);
+}
+.notif-type-policy .notification-icon {
+  color: #f59e0b;
 }
 .notif-type-security .notification-icon {
   color: var(--accent-yellow);
@@ -284,6 +290,31 @@
   border-radius: var(--radius-xs);
   background: var(--bg-tertiary);
   color: var(--text-primary);
+}
+
+.notification-policy-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.notification-policy-details code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.notification-policy-details a,
+.notification-policy-missing-receipt {
+  color: #f59e0b;
+  font-weight: 600;
 }
 
 /* ── Permission Actions ──────────────────────────────────────────────── */

@@ -223,7 +223,7 @@ export interface RetrievalChunk {
 /** A single step in the agent's execution. */
 export interface AgentStep {
     id: number;
-    type: 'thinking' | 'tool' | 'plan' | 'status' | 'error';
+    type: 'thinking' | 'tool' | 'plan' | 'status' | 'error' | 'policy_alert';
     /** Short label shown in collapsed view. */
     label: string;
     /** Detailed content shown when expanded. */
@@ -253,6 +253,14 @@ export interface AgentStep {
     mcpServer?: string;
     /** Tool call latency in milliseconds. */
     latencyMs?: number;
+    /** Governance policy decision, e.g. BLOCK. */
+    decision?: string;
+    /** Governance rule IDs associated with a policy alert. */
+    ruleIds?: string[];
+    /** Governance policy version associated with a policy alert. */
+    policyVersion?: string;
+    /** Governance receipt ID associated with a policy alert. */
+    receiptId?: string;
 }
 
 /** Extended SSE event types for agent communication. */

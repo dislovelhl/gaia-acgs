@@ -36,6 +36,11 @@ const NOTIFICATION_META: Record<
     colorClass: 'notif-type-permission',
     label: 'Permission',
   },
+  policy_alert: {
+    icon: <ShieldAlert size={16} />,
+    colorClass: 'notif-type-policy',
+    label: 'Policy',
+  },
   security_alert: {
     icon: <AlertTriangle size={16} />,
     colorClass: 'notif-type-security',
@@ -75,6 +80,10 @@ function formatNotifTime(timestamp: number): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+function policyReceiptHref(receiptId: string): string {
+  return `#policy-receipt-${encodeURIComponent(receiptId)}`;
 }
 
 // ── Component ────────────────────────────────────────────────────────────
@@ -142,6 +151,7 @@ export function NotificationCenter({ onClose }: NotificationCenterProps) {
   const filterTypes: Array<{ key: NotificationType | null; label: string }> = [
     { key: null, label: 'All' },
     { key: 'permission_request', label: 'Permissions' },
+    { key: 'policy_alert', label: 'Policy' },
     { key: 'error', label: 'Errors' },
     { key: 'security_alert', label: 'Security' },
     { key: 'status_change', label: 'Status' },
@@ -222,11 +232,29 @@ export function NotificationCenter({ onClose }: NotificationCenterProps) {
                   )}
                   <span className="notification-message">{n.message}</span>
 
-                  {/* Tool info for permission requests */}
-                  {n.type === 'permission_request' && n.tool && (
+                  {/* Tool info for permission requests and policy alerts */}
+                  {(n.type === 'permission_request' || n.type === 'policy_alert') && n.tool && (
                     <span className="notification-tool">
                       Tool: <code>{n.tool}</code>
                     </span>
+                  )}
+
+                  {n.type === 'policy_alert' && (
+                    <div className="notification-policy-details">
+                      <span>Decision: <strong>{n.decision || 'BLOCK'}</strong></span>
+                      {n.reason && <span>Reason: {n.reason}</span>}
+                      {n.ruleIds && n.ruleIds.length > 0 && (
+                        <span>Rules: <code>{n.ruleIds.join(', ')}</code></span>
+                      )}
+                      {n.policyVersion && <span>Policy: <code>{n.policyVersion}</code></span>}
+                      {n.receiptId ? (
+                        <a href={policyReceiptHref(n.receiptId)} onClick={(e) => e.stopPropagation()}>
+                          View receipt <code>{n.receiptId}</code>
+                        </a>
+                      ) : (
+                        <span className="notification-policy-missing-receipt">Receipt unavailable</span>
+                      )}
+                    </div>
                   )}
 
                   {/* Permission actions */}

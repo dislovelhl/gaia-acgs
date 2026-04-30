@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import { Edit3, Paperclip, Download, Send, Upload, MessageSquare, Square, ArrowDown, Lock, FileText, FolderSearch, CheckCircle2, X, Link, Bot, ChevronDown, Plus } from 'lucide-react';
+import { Edit3, Paperclip, Download, Send, Upload, MessageSquare, Square, ArrowDown, Lock, FileText, FolderSearch, CheckCircle2, X, Link, Bot, ChevronDown, Plus, ShieldAlert } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { useChatStore } from '../stores/chatStore';
 import { useNotificationStore, ALWAYS_ALLOW_TOOLS_KEY } from '../stores/notificationStore';
@@ -154,9 +154,32 @@ function agentEventToStep(event: StreamEvent, stepIdRef: React.MutableRefObject<
                 detail: event.content, success: false,
                 active: false, timestamp: ts,
             };
+        case 'policy_alert':
+            return {
+                id,
+                type: 'policy_alert',
+                label: `Blocked: ${event.tool || 'tool'} is restricted by policy`,
+                detail: event.reason || 'Blocked by policy.',
+                tool: event.tool,
+                success: false,
+                active: false,
+                timestamp: ts,
+                decision: event.decision || 'BLOCK',
+                ruleIds: event.rule_ids,
+                policyVersion: event.policy_version,
+                receiptId: event.receipt_id,
+            };
         default:
             return null;
     }
+}
+
+function policyReceiptHref(receiptId?: string): string | undefined {
+    return receiptId ? `#policy-receipt-${encodeURIComponent(receiptId)}` : undefined;
+}
+
+function makePolicyNotificationId(receiptId?: string): string {
+    return receiptId ? `policy-${encodeURIComponent(receiptId)}` : `policy-${Date.now()}`;
 }
 
 interface ChatViewProps {
@@ -194,6 +217,12 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
     const [deletingMsgId, setDeletingMsgId] = useState<number | null>(null);
     // Agent picker dropdown state
     const [agentPickerOpen, setAgentPickerOpen] = useState(false);
+    const [policyToast, setPolicyToast] = useState<{
+        id: string;
+        tool: string;
+        receiptId?: string;
+    } | null>(null);
+    const policyToastTimerRef = useRef<number | null>(null);
     const agentPickerRef = useRef<HTMLDivElement>(null);
     // Use session's stored agent_type as the source of truth for the picker display
     const displayedAgentId = session?.agent_type || activeAgentId;
@@ -212,6 +241,14 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, [agentPickerOpen]);
+
+    useEffect(() => {
+        return () => {
+            if (policyToastTimerRef.current !== null) {
+                window.clearTimeout(policyToastTimerRef.current);
+            }
+        };
+    }, []);
 
     const handleAgentChange = useCallback(async (newAgentId: string) => {
         setAgentPickerOpen(false);
@@ -788,6 +825,45 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
                         toolArgs: event.args as Record<string, unknown> | undefined,
                         timeoutSeconds: event.timeout_seconds ?? 60,
                     });
+                    return;
+                }
+
+                // Governance policy alert — non-actionable BLOCK outcome.
+                // Render it as a notification, a transient toast, and an inline
+                // policy card instead of letting it fall through as generic agent data.
+                if (event.type === 'policy_alert') {
+                    const toolName = event.tool || 'tool';
+                    const receiptId = event.receipt_id;
+                    const id = makePolicyNotificationId(receiptId);
+                    const notification: GaiaNotification = {
+                        id,
+                        type: 'policy_alert',
+                        agentId: sessionId,
+                        agentName: 'GAIA',
+                        title: `Blocked: ${toolName} is restricted by policy`,
+                        message: event.reason || 'A governance policy blocked this tool before execution.',
+                        timestamp: Date.now(),
+                        read: false,
+                        dismissed: false,
+                        priority: 'high',
+                        tool: toolName,
+                        decision: event.decision || 'BLOCK',
+                        reason: event.reason,
+                        ruleIds: event.rule_ids,
+                        policyVersion: event.policy_version,
+                        receiptId,
+                    };
+                    addNotification(notification);
+                    setPolicyToast({ id, tool: toolName, receiptId });
+                    if (policyToastTimerRef.current !== null) {
+                        window.clearTimeout(policyToastTimerRef.current);
+                    }
+                    policyToastTimerRef.current = window.setTimeout(() => {
+                        setPolicyToast((current) => (current?.id === id ? null : current));
+                        policyToastTimerRef.current = null;
+                    }, 6000);
+                    const step = agentEventToStep(event, stepIdRef);
+                    if (step) addAgentStep(step);
                     return;
                 }
 
@@ -1464,6 +1540,26 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
                 <button className="scroll-bottom-btn" onClick={scrollToBottom} title="Scroll to bottom" aria-label="Scroll to bottom">
                     <ArrowDown size={16} />
                 </button>
+            )}
+
+            {policyToast && (
+                <div className="policy-alert-toast" role="alert">
+                    <ShieldAlert size={16} />
+                    <span>Blocked: {policyToast.tool} is restricted by policy.</span>
+                    {policyToast.receiptId ? (
+                        <a href={policyReceiptHref(policyToast.receiptId)}>View receipt</a>
+                    ) : (
+                        <span className="policy-alert-toast-missing">Receipt unavailable</span>
+                    )}
+                    <button
+                        type="button"
+                        className="policy-alert-toast-close"
+                        onClick={() => setPolicyToast(null)}
+                        aria-label="Dismiss policy alert"
+                    >
+                        <X size={13} />
+                    </button>
+                </div>
             )}
 
             {/* Drag overlay */}

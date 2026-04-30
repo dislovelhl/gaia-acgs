@@ -14,6 +14,7 @@
  *
  * Notification types:
  *   permission_request — Modal dialog (blocks action) + OS click-to-focus toast
+ *   policy_alert       — Non-actionable governance BLOCK alert + OS click-to-focus toast
  *   security_alert     — In-app toast + OS click-to-focus toast
  *   status_change      — In-app toast (auto-dismiss 5s)
  *   info               — Notification center only
@@ -37,6 +38,7 @@ const MAX_PERSISTED = 200;
 /** Notification types that trigger OS native toasts */
 const OS_TOAST_TYPES = new Set([
   "permission_request",
+  "policy_alert",
   "security_alert",
   "error",
 ]);
@@ -109,6 +111,11 @@ class NotificationService extends EventEmitter {
       message: params.message || "",
       tool: params.tool,
       toolArgs: params.tool_args,
+      decision: params.decision,
+      reason: params.reason,
+      ruleIds: params.rule_ids,
+      policyVersion: params.policy_version,
+      receiptId: params.receipt_id,
       actions: params.actions,
       timeoutSeconds: params.timeout_seconds,
       timestamp: Date.now(),
@@ -130,6 +137,10 @@ class NotificationService extends EventEmitter {
     switch (notif.type) {
       case "permission_request":
         this._handlePermissionRequest(notif);
+        break;
+      case "policy_alert":
+        this._sendToRenderer("notification:new", notif);
+        this._showOsToast(notif);
         break;
       case "security_alert":
       case "error":

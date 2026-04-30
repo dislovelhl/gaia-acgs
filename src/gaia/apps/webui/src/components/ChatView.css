@@ -19,6 +19,51 @@
     outline-offset: -4px;
 }
 
+.policy-alert-toast {
+    position: absolute;
+    right: 24px;
+    bottom: 98px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    max-width: min(520px, calc(100% - 48px));
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+    font-size: 13px;
+    animation: toastIn 200ms var(--ease);
+}
+
+.policy-alert-toast svg {
+    color: #f59e0b;
+    flex-shrink: 0;
+}
+
+.policy-alert-toast a,
+.policy-alert-toast-missing {
+    color: #f59e0b;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.policy-alert-toast-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+}
+
+.policy-alert-toast-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
 /* ── Header -- glassmorphism status bar ─────────────────────────── */
 
 .chat-header {
