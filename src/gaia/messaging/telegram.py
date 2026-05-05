@@ -134,35 +134,29 @@ class TelegramAdapter:
         # Start generator in thread to avoid blocking the asyncio loop
         asyncio.get_running_loop().run_in_executor(None, run_generation)
 
+        # Import telegram transient error types once; fall back to None if
+        # the package is unavailable (e.g. in unit-test environments).
+        try:
+            from telegram.error import NetworkError, RetryAfter, TimedOut
+
+            _transient_tg_errors = (TimedOut, RetryAfter, NetworkError)
+        except ImportError:
+            _transient_tg_errors = ()
+
         # Consume queue and edit message
         accumulated = ""
-        try:
-            while True:
-                text_chunk, done = await queue.get()
-                accumulated = text_chunk
-                # Edit the reply with the latest accumulated text (Telegram rate limits apply)
-                try:
-                    await reply.edit_text(accumulated)
-                except Exception as e:
-                    # Ignore transient edit failures (rate limits) where possible,
-                    # but log for observability. Classify common telegram errors if available.
-                    try:
-                        from telegram.error import NetworkError, RetryAfter, TimedOut
-
-                        if isinstance(e, (TimedOut, RetryAfter, NetworkError)):
-                            log.debug("Transient telegram edit failure: %s", e)
-                        else:
-                            log.exception(
-                                "Unexpected error editing telegram message: %s", e
-                            )
-                    except Exception:
-                        # If telegram isn't available in this environment, fall back
-                        log.debug("Failed to edit telegram message: %s", e)
-                if done:
-                    break
-        finally:
-            # Optionally finalize or log
-            pass
+        while True:
+            text_chunk, done = await queue.get()
+            accumulated = text_chunk
+            # Edit the reply with the latest accumulated text (Telegram rate limits apply)
+            try:
+                await reply.edit_text(accumulated)
+            except _transient_tg_errors as e:  # type: ignore[misc]
+                log.debug("Transient telegram edit failure: %s", e)
+            except Exception as e:
+                log.exception("Unexpected error editing telegram message: %s", e)
+            if done:
+                break
 
     def start(self, token: str, background: bool = False) -> None:
         """Start the telegram Application and run polling.
