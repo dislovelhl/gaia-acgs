@@ -222,6 +222,32 @@ class TestMessageToResponse:
         assert resp.agent_steps is not None
         assert resp.agent_steps[0].type == "tool"
 
+    def test_agent_steps_preserve_policy_alert_fields(self, base_message):
+        base_message["agent_steps"] = json.dumps(
+            [
+                {
+                    "id": 1,
+                    "type": "policy_alert",
+                    "label": "Policy blocked run_shell_command",
+                    "tool": "run_shell_command",
+                    "decision": "BLOCK",
+                    "reason": "blocked by policy",
+                    "ruleIds": ["dangerous-command"],
+                    "policyVersion": "v1",
+                    "receiptId": "receipt-123",
+                    "timestamp": 0,
+                }
+            ]
+        )
+        resp = message_to_response(base_message)
+        assert resp.agent_steps is not None
+        step = resp.agent_steps[0]
+        assert step.type == "policy_alert"
+        assert step.reason == "blocked by policy"
+        assert step.ruleIds == ["dangerous-command"]
+        assert step.policyVersion == "v1"
+        assert step.receiptId == "receipt-123"
+
     def test_agent_steps_invalid_json_returns_none(self, base_message):
         base_message["agent_steps"] = "{broken"
         resp = message_to_response(base_message)

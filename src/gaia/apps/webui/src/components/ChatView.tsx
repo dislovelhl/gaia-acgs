@@ -2,10 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import { Edit3, Paperclip, Download, Send, Upload, MessageSquare, Square, ArrowDown, Lock, FileText, FolderSearch, CheckCircle2, X, Bot, ChevronDown, Plus } from 'lucide-react';
+import { Bell, Edit3, Paperclip, Download, Send, Upload, MessageSquare, Square, ArrowDown, Lock, FileText, FolderSearch, CheckCircle2, X, Bot, ChevronDown, Plus } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
+import { NotificationCenter } from './NotificationCenter';
 import { useChatStore } from '../stores/chatStore';
-import { useNotificationStore, ALWAYS_ALLOW_TOOLS_KEY } from '../stores/notificationStore';
+import {
+    useNotificationStore,
+    ALWAYS_ALLOW_TOOLS_KEY,
+    selectUnreadCount,
+} from '../stores/notificationStore';
 import type { GaiaNotification } from '../types/agent';
 import * as api from '../services/api';
 import { log } from '../utils/logger';
@@ -115,6 +120,29 @@ function agentEventToStep(event: StreamEvent, stepIdRef: React.MutableRefObject<
                 detail: event.content, success: false,
                 active: false, timestamp: ts,
             };
+        case 'policy_alert': {
+            const toolName = event.tool || 'unknown tool';
+            const reason =
+                event.reason ||
+                event.message ||
+                event.content ||
+                'Tool execution was blocked by governance policy.';
+            return {
+                id,
+                type: 'policy_alert',
+                label: `Policy blocked ${toolName}`,
+                detail: reason,
+                tool: toolName,
+                decision: event.decision || 'BLOCK',
+                reason,
+                ruleIds: event.rule_ids ?? [],
+                policyVersion: event.policy_version,
+                receiptId: event.receipt_id,
+                success: false,
+                active: false,
+                timestamp: ts,
+            };
+        }
         default:
             return null;
     }
@@ -136,7 +164,10 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
         agents, activeAgentId, setActiveAgentId,
     } = useChatStore();
 
-    const { addNotification } = useNotificationStore();
+    const addNotification = useNotificationStore((s) => s.addNotification);
+    const showNotificationPanel = useNotificationStore((s) => s.showPanel);
+    const setNotificationPanelVisible = useNotificationStore((s) => s.setShowPanel);
+    const notificationUnreadCount = useNotificationStore(selectUnreadCount);
     const pendingPrompt = useChatStore((s) => s.pendingPrompt);
 
     const session = sessions.find((s) => s.id === sessionId);
@@ -155,6 +186,7 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
     // Agent picker dropdown state
     const [agentPickerOpen, setAgentPickerOpen] = useState(false);
     const agentPickerRef = useRef<HTMLDivElement>(null);
+    const notificationPanelRef = useRef<HTMLDivElement>(null);
     // Use session's stored agent_type as the source of truth for the picker display
     const displayedAgentId = session?.agent_type || activeAgentId;
     // Resolve human-readable agent names for the message header
@@ -172,6 +204,17 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, [agentPickerOpen]);
+
+    useEffect(() => {
+        if (!showNotificationPanel) return;
+        const handler = (e: MouseEvent) => {
+            if (notificationPanelRef.current && !notificationPanelRef.current.contains(e.target as Node)) {
+                setNotificationPanelVisible(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showNotificationPanel, setNotificationPanelVisible]);
 
     const handleAgentChange = useCallback(async (newAgentId: string) => {
         setAgentPickerOpen(false);
@@ -743,6 +786,37 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
                     return;
                 }
 
+                if (event.type === 'policy_alert') {
+                    const step = agentEventToStep(event, stepIdRef);
+                    if (step) addAgentStep(step);
+
+                    const toolName = event.tool || 'unknown tool';
+                    const reason =
+                        event.reason ||
+                        event.message ||
+                        event.content ||
+                        'Tool execution was blocked by governance policy.';
+                    addNotification({
+                        id: event.receipt_id ?? `policy-${Date.now()}-${stepIdRef.current}`,
+                        type: 'policy_alert',
+                        agentId: sessionId,
+                        agentName: 'GAIA',
+                        title: `Blocked ${toolName}`,
+                        message: reason,
+                        timestamp: Date.now(),
+                        read: false,
+                        dismissed: false,
+                        priority: 'critical',
+                        tool: toolName,
+                        decision: event.decision || 'BLOCK',
+                        reason,
+                        ruleIds: event.rule_ids ?? [],
+                        policyVersion: event.policy_version,
+                        receiptId: event.receipt_id,
+                    });
+                    return;
+                }
+
                 // Tool completion updates the last TOOL step (not just the last step,
                 // since thinking/status events may have been interleaved during execution)
                 if (event.type === 'tool_end') {
@@ -885,7 +959,8 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
                     ...s, active: false,
                 }));
 
-                if (content) {
+                const hasPolicyAlert = stepsSnapshot.some((s) => s.type === 'policy_alert');
+                if (content || hasPolicyAlert) {
                     // Update msg count ref so poll doesn't re-fetch what we just added
                     lastMsgCountRef.current = useChatStore.getState().messages.length + 1;
                     const assistantMsg: Message = {
@@ -1211,6 +1286,23 @@ export function ChatView({ sessionId, onCreateAgent, onAgentChange }: ChatViewPr
                     )}
                 </div>
                 <div className="chat-header-right">
+                    <div className="notification-center-anchor" ref={notificationPanelRef}>
+                        <button
+                            className={`btn-icon-sm notification-center-trigger ${notificationUnreadCount > 0 ? 'has-unread' : ''}`}
+                            onClick={() => setNotificationPanelVisible(!showNotificationPanel)}
+                            title="Notifications"
+                            aria-label="Open notification center"
+                            aria-expanded={showNotificationPanel}
+                        >
+                            <Bell size={15} />
+                            {notificationUnreadCount > 0 && (
+                                <span className="notification-center-trigger-badge">
+                                    {notificationUnreadCount > 99 ? '99+' : notificationUnreadCount}
+                                </span>
+                            )}
+                        </button>
+                        {showNotificationPanel && <NotificationCenter onClose={() => setNotificationPanelVisible(false)} />}
+                    </div>
                     <span
                         className={`model-badge ${!systemStatus?.model_loaded ? 'no-model' : ''}`}
                         title={

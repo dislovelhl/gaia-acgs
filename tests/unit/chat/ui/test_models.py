@@ -399,3 +399,23 @@ class TestAgentStepResponse:
         data = step.model_dump()
         assert data["mcpServer"] is None
         assert data["latencyMs"] is None
+
+    def test_policy_alert_fields_round_trip(self):
+        step = AgentStepResponse(
+            id=1,
+            type="policy_alert",
+            label="Policy blocked run_shell_command",
+            tool="run_shell_command",
+            decision="BLOCK",
+            reason="blocked by policy",
+            ruleIds=["dangerous-command"],
+            policyVersion="v1",
+            receiptId="receipt-123",
+            timestamp=0,
+        )
+        data = step.model_dump()
+        assert data["decision"] == "BLOCK"
+        assert data["reason"] == "blocked by policy"
+        assert data["ruleIds"] == ["dangerous-command"]
+        assert data["policyVersion"] == "v1"
+        assert data["receiptId"] == "receipt-123"
